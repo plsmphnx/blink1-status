@@ -14,18 +14,18 @@
       });
 
       default = pkgs.stdenv.mkDerivation {
-        name = "micblink";
+        name = "blink1-status";
         src = ./.;
         nativeBuildInputs = with pkgs; [ pkg-config ];
         buildInputs = with pkgs; [ astal.wireplumber glib libblink1 ];
         buildPhase = ''
-          gcc main.c -o micblink \
+          gcc main.c -o blink1-status \
             $(pkg-config --cflags --libs glib-2.0 gobject-2.0) \
             -l astal-wireplumber -l blink1
         '';
         installPhase = ''
           mkdir -p "$out/bin"
-          mv micblink "$out/bin"
+          mv blink1-status "$out/bin"
         '';
       };
     });

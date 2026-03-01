@@ -6,26 +6,37 @@
 #include <glib-unix.h>
 
 typedef struct {
-    guint count;
+    uint recorders;
     blink1_device *device;
+    uint brightness;
 } State;
 
-void recording_on(blink1_device *device) {
-    blink1_setRGB(device, 136, 34, 34);
+void set_rgb(State *state, uint r, uint g, uint b) {
+    blink1_setRGB(
+        state->device,
+        state->brightness * r,
+        state->brightness * g,
+        state->brightness * b
+    );
 }
 
-void recording_off(blink1_device *device) {
-    blink1_setRGB(device, 0, 102, 0);
+void set_state(State *state) {
+    if (state->recorders > 0)
+        set_rgb(state, 4, 1, 1);
+    else
+        set_rgb(state, 0, 3, 0);
 }
 
 void on_recorder_added(AstalWpAudio*, AstalWpStream*, gpointer data) {
     State *state = (State*)data;
-    if (!state->count++) recording_on(state->device);
+    state->recorders++;
+    set_state(state);
 }
 
 void on_recorder_removed(AstalWpAudio*, AstalWpStream*, gpointer data) {
     State *state = (State*)data;
-    if (!--state->count) recording_off(state->device);
+    state->recorders--;
+    set_state(state);
 }
 
 gboolean on_signal(gpointer data) {
@@ -47,17 +58,18 @@ void wait_for_signal() {
 int main(int argc, char *argv[]) {
     AstalWpWp *wp = astal_wp_wp_get_default();
     AstalWpAudio *audio = astal_wp_wp_get_audio(wp);
-    GList *list = astal_wp_audio_get_recorders(audio);
 
-    State state = {0, blink1_open()};
+    State state = {0, blink1_open(), 51};
+
+    GList *list = astal_wp_audio_get_recorders(audio);
     if (list != NULL) {
-        state.count = g_list_length(list);
+        state.recorders = g_list_length(list);
         g_object_unref(list);
     }
-    if (state.count > 0)
-        recording_on(state.device);
-    else
-        recording_off(state.device);
+
+    if (argc > 1) state.brightness = atoi(argv[1]);
+
+    set_state(&state);
 
     gulong recorder_added_handle = g_signal_connect(
         audio,
