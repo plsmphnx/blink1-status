@@ -1,8 +1,15 @@
 {
-  outputs = { nixpkgs, ... }: let
-    systems = fn: nixpkgs.lib.mapAttrs (_: fn) nixpkgs.legacyPackages;
+  inputs = {
+    astal = {
+      url = "github:aylur/astal";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+  outputs = { self, nixpkgs, astal }: let
+    systems = fn: nixpkgs.lib.mapAttrs fn nixpkgs.legacyPackages;
+    astal-wp = system: astal.packages.${system}.wireplumber;
   in {
-    packages = systems (pkgs: rec {
+    packages = systems (system: pkgs: rec {
       blink1-tool = pkgs.blink1-tool.overrideAttrs (_: old: {
         makeFlags = old.makeFlags ++ [ "GIT_TAG_RAW=v${old.version}" ];
       });
@@ -17,7 +24,7 @@
         name = "blink1-status";
         src = ./.;
         nativeBuildInputs = with pkgs; [ pkg-config ];
-        buildInputs = with pkgs; [ astal.wireplumber glib libblink1 ];
+        buildInputs = with pkgs; [ (astal-wp system) glib libblink1 ];
         buildPhase = ''
           gcc main.c -o blink1-status \
             $(pkg-config --cflags --libs glib-2.0 gobject-2.0) \
